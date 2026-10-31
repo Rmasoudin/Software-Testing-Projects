@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AdaptiveCruise.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">autopilot</a> &gt; <a href="index.source.html" class="el_package">autopilot.core</a> &gt; <span class="el_source">AdaptiveCruise.java</span></div><h1>AdaptiveCruise.java</h1><pre class="source lang-java linenums">package autopilot.core;
+
+public final class AdaptiveCruise {
+    private static final double METERS_PER_KMH = 0.5;
+    private static final double EMERGENCY_DISTANCE_RATIO = 0.5;
+    private static final double RELEASE_DISTANCE_RATIO = 1.2;
+    private static final double MAX_ACCELERATION_STEP_KMH = 5.0;
+    private static final double HYSTERESIS_BRAKE_PRESSURE = 10.0;
+
+<span class="fc" id="L10">    public enum Mode {</span>
+<span class="fc" id="L11">        ACCELERATE,</span>
+<span class="fc" id="L12">        HOLD,</span>
+<span class="fc" id="L13">        BRAKE,</span>
+<span class="fc" id="L14">        EMERGENCY_BRAKE</span>
+    }
+
+<span class="fc" id="L17">    public record Decision(Mode mode, double amount) {</span>
+    }
+
+    private final double targetSpeedKmh;
+    private boolean braking;
+
+<span class="fc" id="L23">    public AdaptiveCruise(double targetSpeedKmh) {</span>
+<span class="pc bpc" id="L24" title="2 of 4 branches missed.">        if (!Double.isFinite(targetSpeedKmh) || targetSpeedKmh &lt; 0.0) {</span>
+<span class="nc" id="L25">            throw new IllegalArgumentException(&quot;target speed must be a finite non-negative value&quot;);</span>
+        }
+<span class="fc" id="L27">        this.targetSpeedKmh = targetSpeedKmh;</span>
+<span class="fc" id="L28">    }</span>
+
+    public double safeDistanceFor(double speedKmh) {
+<span class="fc" id="L31">        validateSpeed(speedKmh);</span>
+<span class="fc" id="L32">        return speedKmh * METERS_PER_KMH;</span>
+    }
+
+    public Decision update(double speedKmh, double distanceMeters) {
+<span class="fc" id="L36">        validateSpeed(speedKmh);</span>
+<span class="fc" id="L37">        validateDistance(distanceMeters);</span>
+
+<span class="fc" id="L39">        double safeDistance = safeDistanceFor(speedKmh);</span>
+<span class="fc" id="L40">        double emergencyDistance = safeDistance * EMERGENCY_DISTANCE_RATIO;</span>
+<span class="fc" id="L41">        double releaseDistance = safeDistance * RELEASE_DISTANCE_RATIO;</span>
+
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        if (distanceMeters &lt;= emergencyDistance) {</span>
+<span class="fc" id="L44">            braking = true;</span>
+<span class="fc" id="L45">            return new Decision(Mode.EMERGENCY_BRAKE, 100.0);</span>
+        }
+
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (braking) {</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">            if (distanceMeters &lt; releaseDistance) {</span>
+<span class="fc" id="L50">                return new Decision(Mode.BRAKE,</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">                        distanceMeters &lt; safeDistance</span>
+<span class="fc" id="L52">                                ? proportionalBrake(safeDistance, distanceMeters)</span>
+<span class="fc" id="L53">                                : HYSTERESIS_BRAKE_PRESSURE);</span>
+            }
+<span class="fc" id="L55">            braking = false;</span>
+        }
+
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (distanceMeters &lt; safeDistance) {</span>
+<span class="fc" id="L59">            braking = true;</span>
+<span class="fc" id="L60">            return new Decision(Mode.BRAKE, proportionalBrake(safeDistance, distanceMeters));</span>
+        }
+<span class="fc bfc" id="L62" title="All 4 branches covered.">        if (distanceMeters &gt; safeDistance &amp;&amp; speedKmh &lt; targetSpeedKmh) {</span>
+<span class="fc" id="L63">            return new Decision(Mode.ACCELERATE,</span>
+<span class="fc" id="L64">                    Math.min(MAX_ACCELERATION_STEP_KMH, targetSpeedKmh - speedKmh));</span>
+        }
+<span class="fc" id="L66">        return new Decision(Mode.HOLD, 0.0);</span>
+    }
+
+    private double proportionalBrake(double safeDistance, double distanceMeters) {
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">        if (safeDistance == 0.0) {</span>
+<span class="nc" id="L71">            return 100.0;</span>
+        }
+<span class="fc" id="L73">        return (safeDistance - distanceMeters) / safeDistance * 100.0;</span>
+    }
+
+    private void validateSpeed(double speedKmh) {
+<span class="fc bfc" id="L77" title="All 4 branches covered.">        if (!Double.isFinite(speedKmh) || speedKmh &lt; 0.0) {</span>
+<span class="fc" id="L78">            throw new IllegalArgumentException(&quot;speed must be a finite non-negative value&quot;);</span>
+        }
+<span class="fc" id="L80">    }</span>
+
+    private void validateDistance(double distanceMeters) {
+<span class="fc bfc" id="L83" title="All 4 branches covered.">        if (!Double.isFinite(distanceMeters) || distanceMeters &lt; 0.0) {</span>
+<span class="fc" id="L84">            throw new IllegalArgumentException(&quot;distance must be a finite non-negative value&quot;);</span>
+        }
+<span class="fc" id="L86">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

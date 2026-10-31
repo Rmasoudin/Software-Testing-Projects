@@ -1,0 +1,11 @@
+from,to,speedKmh,expectedAllowed
+P,R,0.0,true
+P,R,4.99,true
+P,R,5.0,false
+P,R,5.01,false
+R,D,0.0,true
+R,D,0.01,false
+R,D,60.0,false
+D,R,0.0,true
+D,R,0.01,false
+D,R,60.0,false

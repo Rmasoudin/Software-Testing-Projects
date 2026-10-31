@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SensorSnapshot.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">autopilot</a> &gt; <a href="index.source.html" class="el_package">autopilot.sensor</a> &gt; <span class="el_source">SensorSnapshot.java</span></div><h1>SensorSnapshot.java</h1><pre class="source lang-java linenums">package autopilot.sensor;
+
+import autopilot.exception.SensorFailureException;
+
+import java.util.Objects;
+
+public final class SensorSnapshot implements SpeedSensor, ObstacleSensor, LaneSensor {
+    private final Double speedKmh;
+    private final Double distanceMeters;
+    private final Double laneOffsetMeters;
+    private final String failureMessage;
+
+    private SensorSnapshot(Double speedKmh, Double distanceMeters, Double laneOffsetMeters,
+<span class="nc" id="L14">                           String failureMessage) {</span>
+<span class="nc" id="L15">        this.speedKmh = speedKmh;</span>
+<span class="nc" id="L16">        this.distanceMeters = distanceMeters;</span>
+<span class="nc" id="L17">        this.laneOffsetMeters = laneOffsetMeters;</span>
+<span class="nc" id="L18">        this.failureMessage = failureMessage;</span>
+<span class="nc" id="L19">    }</span>
+
+    public static SensorSnapshot of(double speedKmh, double distanceMeters, double laneOffsetMeters) {
+<span class="nc" id="L22">        return new SensorSnapshot(speedKmh, distanceMeters, laneOffsetMeters, null);</span>
+    }
+
+    public static SensorSnapshot failed(String message) {
+<span class="nc" id="L26">        return new SensorSnapshot(null, null, null,</span>
+<span class="nc" id="L27">                Objects.requireNonNull(message, &quot;message must not be null&quot;));</span>
+    }
+
+    @Override
+    public double getSpeedKmh() {
+<span class="nc" id="L32">        ensureOperational();</span>
+<span class="nc" id="L33">        return speedKmh;</span>
+    }
+
+    @Override
+    public double getDistanceMeters() {
+<span class="nc" id="L38">        ensureOperational();</span>
+<span class="nc" id="L39">        return distanceMeters;</span>
+    }
+
+    @Override
+    public double getLaneOffsetMeters() {
+<span class="nc" id="L44">        ensureOperational();</span>
+<span class="nc" id="L45">        return laneOffsetMeters;</span>
+    }
+
+    private void ensureOperational() {
+<span class="nc bnc" id="L49" title="All 2 branches missed.">        if (failureMessage != null) {</span>
+<span class="nc" id="L50">            throw new SensorFailureException(failureMessage);</span>
+        }
+<span class="nc" id="L52">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

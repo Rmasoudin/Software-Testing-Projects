@@ -1,0 +1,13 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+autopilot,autopilot.core,AutoDriver,16,120,2,5,3,26,2,6,0,4
+autopilot,autopilot.core,AdaptiveCruise.Decision,0,9,0,0,0,1,0,1,0,1
+autopilot,autopilot.core,AdaptiveCruise,7,156,3,25,2,36,3,17,0,6
+autopilot,autopilot.core,AutoDriver.DriveResult,0,18,0,0,0,1,0,1,0,1
+autopilot,autopilot.core,SteeringController,0,95,0,10,0,24,0,14,0,9
+autopilot,autopilot.core,AdaptiveCruise.Mode,0,27,0,0,0,5,0,1,0,1
+autopilot,autopilot.core,BrakeController,0,109,0,18,0,28,0,17,0,8
+autopilot,autopilot.core,GearBox,7,124,0,34,2,24,1,22,1,5
+autopilot,autopilot.core,GearBox.Gear,0,27,0,0,0,1,0,1,0,1
+autopilot,autopilot.sensor,SensorSnapshot,65,0,2,0,18,0,8,0,7,0
+autopilot,autopilot.exception,IllegalGearChangeException,0,4,0,0,0,2,0,1,0,1
+autopilot,autopilot.exception,SensorFailureException,0,4,0,0,0,2,0,1,0,1

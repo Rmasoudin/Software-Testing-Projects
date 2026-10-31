@@ -1,0 +1,16 @@
+autopilot\core\GearBox$Gear.class
+autopilot\sensor\ObstacleSensor.class
+autopilot\exception\IllegalGearChangeException.class
+autopilot\core\AutoDriver$1.class
+autopilot\core\AutoDriver.class
+autopilot\exception\SensorFailureException.class
+autopilot\core\AdaptiveCruise.class
+autopilot\core\SteeringController.class
+autopilot\sensor\LaneSensor.class
+autopilot\core\GearBox.class
+autopilot\core\AutoDriver$DriveResult.class
+autopilot\core\AdaptiveCruise$Decision.class
+autopilot\core\AdaptiveCruise$Mode.class
+autopilot\sensor\SensorSnapshot.class
+autopilot\core\BrakeController.class
+autopilot\sensor\SpeedSensor.class

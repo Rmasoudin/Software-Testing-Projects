@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SteeringController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">autopilot</a> &gt; <a href="index.source.html" class="el_package">autopilot.core</a> &gt; <span class="el_source">SteeringController.java</span></div><h1>SteeringController.java</h1><pre class="source lang-java linenums">package autopilot.core;
+
+<span class="fc" id="L3">public final class SteeringController {</span>
+    private static final double PHYSICAL_LIMIT_DEGREES = 450.0;
+    private static final double HIGH_SPEED_LIMIT_DEGREES = 90.0;
+    private static final double HIGH_SPEED_THRESHOLD_KMH = 120.0;
+    private static final double MAX_CHANGE_PER_TICK_DEGREES = 60.0;
+
+    private double currentAngleDegrees;
+    private double targetAngleDegrees;
+
+    public double update(double requestedAngleDegrees, double speedKmh) {
+<span class="fc" id="L13">        validateAngle(requestedAngleDegrees);</span>
+<span class="fc" id="L14">        validateSpeed(speedKmh);</span>
+<span class="fc bfc" id="L15" title="All 2 branches covered.">        double allowedLimit = speedKmh &gt; HIGH_SPEED_THRESHOLD_KMH</span>
+<span class="fc" id="L16">                ? HIGH_SPEED_LIMIT_DEGREES</span>
+<span class="fc" id="L17">                : PHYSICAL_LIMIT_DEGREES;</span>
+<span class="fc" id="L18">        targetAngleDegrees = clamp(requestedAngleDegrees, -allowedLimit, allowedLimit);</span>
+<span class="fc" id="L19">        return moveTowardTarget();</span>
+    }
+
+    public double selfCenter() {
+<span class="fc" id="L23">        targetAngleDegrees = 0.0;</span>
+<span class="fc" id="L24">        return moveTowardTarget();</span>
+    }
+
+    public double getCurrentAngleDegrees() {
+<span class="fc" id="L28">        return currentAngleDegrees;</span>
+    }
+
+    public double getTargetAngleDegrees() {
+<span class="fc" id="L32">        return targetAngleDegrees;</span>
+    }
+
+    private double moveTowardTarget() {
+<span class="fc" id="L36">        double difference = targetAngleDegrees - currentAngleDegrees;</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">        if (Math.abs(difference) &lt;= MAX_CHANGE_PER_TICK_DEGREES) {</span>
+<span class="fc" id="L38">            currentAngleDegrees = targetAngleDegrees;</span>
+        } else {
+<span class="fc" id="L40">            currentAngleDegrees += Math.copySign(MAX_CHANGE_PER_TICK_DEGREES, difference);</span>
+        }
+<span class="fc" id="L42">        return currentAngleDegrees;</span>
+    }
+
+    private double clamp(double value, double min, double max) {
+<span class="fc" id="L46">        return Math.max(min, Math.min(max, value));</span>
+    }
+
+    private void validateAngle(double angleDegrees) {
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (!Double.isFinite(angleDegrees)) {</span>
+<span class="fc" id="L51">            throw new IllegalArgumentException(&quot;requested angle must be finite&quot;);</span>
+        }
+<span class="fc" id="L53">    }</span>
+
+    private void validateSpeed(double speedKmh) {
+<span class="fc bfc" id="L56" title="All 4 branches covered.">        if (!Double.isFinite(speedKmh) || speedKmh &lt; 0.0) {</span>
+<span class="fc" id="L57">            throw new IllegalArgumentException(&quot;speed must be a finite non-negative value&quot;);</span>
+        }
+<span class="fc" id="L59">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

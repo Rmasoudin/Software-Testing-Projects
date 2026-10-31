@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: autopilot.core.SteeringControllerTest
+-------------------------------------------------------------------------------
+Tests run: 35, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.027 s -- in autopilot.core.SteeringControllerTest
