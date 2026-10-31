@@ -1,139 +1,140 @@
 package autopilot.core;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.function.DoubleSupplier;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+
+import autopilot.core.AdaptiveCruise.Mode;
+import autopilot.core.AutoDriver.DriveResult;
 import autopilot.exception.SensorFailureException;
 import autopilot.sensor.LaneSensor;
 import autopilot.sensor.ObstacleSensor;
 import autopilot.sensor.SpeedSensor;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class AutoDriverTest {
 
-    private SpeedSensor speedSensor;
-    private ObstacleSensor obstacleSensor;
-    private LaneSensor laneSensor;
-    private AutoDriver autoDriver;
+    private static final double TARGET_SPEED_KMH = 80.0;
+    private static final double DELTA = 1e-9;
 
+    // What each stub sensor reports. A test changes only the source it cares about;
+    // a source may also throw to simulate a failing sensor.
+    private DoubleSupplier speedSource;
+    private DoubleSupplier distanceSource;
+    private DoubleSupplier laneSource;
+
+    // Hand-written test doubles that delegate to the sources above.
+    private final SpeedSensor speedSensor = new SpeedSensor() {
+        @Override
+        public double getSpeedKmh() {
+            return speedSource.getAsDouble();
+        }
+    };
+    private final ObstacleSensor obstacleSensor = new ObstacleSensor() {
+        @Override
+        public double getDistanceMeters() {
+            return distanceSource.getAsDouble();
+        }
+    };
+    private final LaneSensor laneSensor = new LaneSensor() {
+        @Override
+        public double getLaneOffsetMeters() {
+            return laneSource.getAsDouble();
+        }
+    };
+
+    // Used by the @EnumSource test: which sensor is failing.
+    private enum FailingSensor {
+        SPEED, OBSTACLE, LANE
+    }
+
+    // Fresh, healthy "normal driving" fixture for every test:
+    // at target speed, clear road, centred in lane. Each test overrides only what it needs.
     @BeforeEach
     void setUp() {
-        speedSensor = new SpeedSensor() {
-            @Override
-            public double getSpeedKmh() {
-                return 80.0;
-            }
-        };
-
-        obstacleSensor = new ObstacleSensor() {
-            @Override
-            public double getDistanceMeters() {
-                return 100.0;
-            }
-        };
-
-        laneSensor = new LaneSensor() {
-            @Override
-            public double getLaneOffsetMeters() {
-                return 0.0;
-            }
-        };
-
-        autoDriver = new AutoDriver(
-                speedSensor,
-                obstacleSensor,
-                laneSensor,
-                80.0
-        );
+        speedSource = () -> TARGET_SPEED_KMH;
+        distanceSource = () -> 100.0;
+        laneSource = () -> 0.0;
     }
 
-    @Test
-    void test1() {
-        AutoDriver.DriveResult result = autoDriver.tick(GearBox.Gear.D);
-
-        assertNotNull(result);
-        assertFalse(result.safeMode());
-        assertNotNull(result.cruiseMode());
-        assertEquals(0.0, result.brakePressure());
+    // Each test builds its own driver, so no state is shared between tests.
+    private AutoDriver newDriver() {
+        return new AutoDriver(speedSensor, obstacleSensor, laneSensor, TARGET_SPEED_KMH);
     }
 
+    // ------------------------------------------------------------------
+    // Normal driving (replaces test1)
+    // Expected: speed == target and clear road -> HOLD, no brake, no steering,
+    // no warning, not in safe mode.
+    // ------------------------------------------------------------------
+
     @Test
-    void testLanePositive() {
-        laneSensor = new LaneSensor() {
-            @Override
-            public double getLaneOffsetMeters() {
-                return 1.0;
-            }
-        };
+    @Tag("cruise")
+    @DisplayName("At target speed on a clear, centred road the car holds: no brake, no steering, no warning")
+    void testNormalDrivingHoldsWithoutBrakeOrSteering() {
+        DriveResult result = newDriver().tick(GearBox.Gear.D);
 
-        autoDriver = new AutoDriver(
-                speedSensor, obstacleSensor, laneSensor, 80.0
-        );
-
-        AutoDriver.DriveResult result = autoDriver.tick(GearBox.Gear.D);
-
-        assertTrue(result.steeringAngleDegrees() < 0.0);
+        assertEquals(new DriveResult(0.0, 0.0, Mode.HOLD, false, false), result);
     }
 
-    @Test
-    void testLaneNegative() {
-        laneSensor = new LaneSensor() {
-            @Override
-            public double getLaneOffsetMeters() {
-                return -1.0;
-            }
-        };
+    // ------------------------------------------------------------------
+    // Lane keeping (replaces testLanePositive / testLaneNegative)
+    // Threshold is 0.5 m: strictly greater deviation triggers a 45 degree correction
+    // in the opposite direction; anything inside [-0.5, 0.5] keeps the wheel centred.
+    // Values sit on both sides of each boundary (boundary value analysis).
+    // ------------------------------------------------------------------
 
-        autoDriver = new AutoDriver(
-                speedSensor, obstacleSensor, laneSensor, 80.0
-        );
+    @ParameterizedTest
+    @CsvSource({
+            "1.0,   -45.0",   // clearly right of centre -> steer negative
+            "0.51,  -45.0",   // just above +threshold   -> steer negative
+            "0.5,   0.0",     // exactly +threshold      -> no correction
+            "0.0,   0.0",     // centred                 -> no correction
+            "-0.5,  0.0",     // exactly -threshold      -> no correction
+            "-0.51, 45.0",    // just below -threshold   -> steer positive
+            "-1.0,  45.0"     // clearly left of centre  -> steer positive
+    })
+    @Tag("lane-keeping")
+    void testLaneCorrectionSteeringByOffset(double laneOffsetMeters, double expectedSteeringDegrees) {
+        laneSource = () -> laneOffsetMeters;
 
-        AutoDriver.DriveResult result = autoDriver.tick(GearBox.Gear.D);
+        DriveResult result = newDriver().tick(GearBox.Gear.D);
 
-        assertTrue(result.steeringAngleDegrees() > 0.0);
+        assertEquals(expectedSteeringDegrees, result.steeringAngleDegrees(), DELTA);
     }
 
-    @Test
-    void testSpeedSensorFailure() {
-        speedSensor = new SpeedSensor() {
-            @Override
-            public double getSpeedKmh() {
-                throw new SensorFailureException("Speed sensor failed");
-            }
-        };
+    // ------------------------------------------------------------------
+    // Sensor failure (replaces testSpeedSensorFailure / testObstacleSensorFailure)
+    // Any failing sensor -> safe mode: no steering, 30 % brake, BRAKE mode, no warning.
+    // High-risk behaviour, so it is tagged "safety" for risk-based test selection.
+    // ------------------------------------------------------------------
 
-        autoDriver = new AutoDriver(
-                speedSensor, obstacleSensor, laneSensor, 80.0
-        );
+    @ParameterizedTest
+    @EnumSource(FailingSensor.class)
+    @Tag("safety")
+    void testSafeModeWhenASensorFails(FailingSensor failingSensor) {
+        SensorFailureException failure = new SensorFailureException("sensor failed");
+        switch (failingSensor) {
+            case SPEED -> speedSource = () -> {
+                throw failure;
+            };
+            case OBSTACLE -> distanceSource = () -> {
+                throw failure;
+            };
+            case LANE -> laneSource = () -> {
+                throw failure;
+            };
+        }
 
-        AutoDriver.DriveResult result = autoDriver.tick(GearBox.Gear.D);
+        DriveResult result = newDriver().tick(GearBox.Gear.D);
 
-        assertTrue(result.safeMode());
-        assertEquals(30.0, result.brakePressure());
-        assertEquals(0.0, result.steeringAngleDegrees());
-        assertEquals(AdaptiveCruise.Mode.BRAKE, result.cruiseMode());
-        assertFalse(result.warningActive());
-    }
-
-    @Test
-    void testObstacleSensorFailure() {
-        obstacleSensor = new ObstacleSensor() {
-            @Override
-            public double getDistanceMeters() {
-                throw new SensorFailureException("Obstacle sensor failed");
-            }
-        };
-
-        autoDriver = new AutoDriver(
-                speedSensor, obstacleSensor, laneSensor, 80.0
-        );
-
-        AutoDriver.DriveResult result = autoDriver.tick(GearBox.Gear.D);
-
-        assertTrue(result.safeMode());
-        assertEquals(30.0, result.brakePressure());
-        assertEquals(0.0, result.steeringAngleDegrees());
-        assertEquals(AdaptiveCruise.Mode.BRAKE, result.cruiseMode());
-        assertFalse(result.warningActive());
+        assertEquals(new DriveResult(0.0, 30.0, Mode.BRAKE, false, true), result);
     }
 }
